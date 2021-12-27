@@ -1,7 +1,6 @@
 import { Worker } from 'worker_threads';
-export const PWM = new Worker('./vehicle/pwm.js');
-const Connection = new Worker('./vehicle/connection.js');
 import { Motor } from './vehicle/Motor.js';
+const Connection = new Worker('./vehicle/connection.js');
 Connection.on('message', (params) => {
     if ('hlt' in params) {
         // Halt all motion
@@ -13,6 +12,6 @@ Connection.on('message', (params) => {
 // Exit sequence
 process.on('SIGINT', () => {
     Connection.kill('SIGINT');
-    PWM.kill('SIGINT');
+    Motor.killPWM('SIGINT');
     process.exit(0);
 })

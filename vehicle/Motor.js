@@ -1,6 +1,6 @@
 import { Worker } from 'worker_threads';
+export const PWM = new Worker('./vehicle/pwm.js');
 import config from '../config.js';
-import { PWM } from '../main.js';
 const { CtrlModel, motors } = config;
 export class Motor {
     #fw = NaN;
@@ -58,5 +58,6 @@ export class Motor {
                 )
             )
     }
+    static killPWM(sig) {PWM.kill(sig);}
 }
 Motor.motors = motors.map(pins => new Motor(pins));
