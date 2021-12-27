@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "bonjour": "^3.5.0"
+  },
+  "optionalDependencies": {
+    "rpi-gpio": "^2.1.7"
+  }
+}
