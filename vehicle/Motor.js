@@ -53,7 +53,6 @@ export class Motor {
         this.exec(MotionMatrix.map(x => x / linear_throttle));
     }
     static exec(MotionMatrix) {
-        log.info('exec', MotionMatrix);
         if (MotionMatrix === undefined) {
             // Zero out all matrices
             MotionMatrix = new Array(this.motors.length).fill(0);

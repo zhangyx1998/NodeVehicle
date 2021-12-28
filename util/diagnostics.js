@@ -120,6 +120,6 @@ function formatMsg(...msgs) {
 	if (typeof msg === 'string') {
 		return msg;
 	} else {
-		return formatMsg(JSON.stringify(msg, null, 4));
+		return JSON.stringify(msg, null, 4);
 	}
 }

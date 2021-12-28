@@ -4,3 +4,38 @@ Service.init(
     'vehicle/Motor',
     'vehicle/PWM'
 );
+// EXIT Procedure
+let PendingExit;
+process.on('SIGINT', () => {
+    process.stdout.write('\n');
+    if (PendingExit) process.exit(0);
+    PendingExit = true;
+    console.log(Service);
+    halt()
+        .then(() => process.exit(0))
+        .catch(e => {
+            console.error(e);
+            process.exit(1);
+        })
+})
+function halt() {
+    return new Promise((resolve, reject) => {
+        const errors = [];
+        let pendingList = Object.keys(Service);
+        for (const serviceName in Service) {
+            Service[serviceName].$('$halt')
+                .catch(e => errors.push(e))
+                .then(() => {
+                    pendingList = pendingList.filter(str => str !== serviceName);
+                    console.log(pendingList)
+                    if (pendingList.length == 0) {
+                        if (errors.length == 0)
+                            resolve();
+                        else
+                            reject(errors);
+                    }
+                })
+        }
+        if (pendingList.length == 0) resolve();
+    })
+}

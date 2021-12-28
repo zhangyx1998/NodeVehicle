@@ -21,7 +21,6 @@ export const Service = {
 			assert((serviceName in this));
 			this[serviceName].$init($);
 		}
-        console.log($);
 		// Prevent further modification
 		Object.freeze(this);
 		// Info (done)
@@ -38,6 +37,13 @@ export class ServiceProxy {
 	constructor(workerName) {
 		this.#workerName = workerName;
 		this.#worker = new Worker(`./${workerName}.js`);
+		this.#worker.on('error', err => {
+			log.error(this, `Worker ${this.#workerName} throwed uncaught error:\n${err.stack}`);
+		})
+		this.#worker.on('exit', code => {
+			log.error(this, `Worker ${this.#workerName} exited with code ${code}`);
+			this.#worker = undefined;
+		})
 		this.#worker.on('message', message => {
 			const { qid, proc, cmd, data, error } = message;
 			if (cmd !== undefined) {
@@ -79,7 +85,7 @@ export class ServiceProxy {
 					}
 					delete this.#QueryPool[qid];
 				} else {
-					log.error( `[ServiceProxy] [${this.$name}] Got message without qid specified: \n${JSON.stringify(message, null, '\t')}`);
+					log.error(`[ServiceProxy] [${this.$name}] Got message without qid specified: \n${JSON.stringify(message, null, '\t')}`);
 				}
 			}
 		});
@@ -88,6 +94,7 @@ export class ServiceProxy {
 		});
 	}
 	$(cmd, data, src = null) {
+		if (!this.#worker) return undefined;
 		const qid = uniqSeed(seed => seed in this.#QueryPool);
 		return new Promise((res, rej) => {
 			this.#QueryPool[qid] = { res, rej };
@@ -112,7 +119,7 @@ export class ServiceProxy {
 				Object.freeze(this);
 			})
 		} else {
-			this.$('$', list)
+			this.$('$', list);
 		}
 	}
 }
@@ -152,9 +159,10 @@ export class ServiceWorker {
 									qid,
 									data: Object.keys(this.#commands)
 								});
-							else
+							else {
 								instantiate(data, this);
-                                this.$onInit();
+								this.$onInit();
+							}
 							return;
 						}
 						if (cmd === '$halt') {

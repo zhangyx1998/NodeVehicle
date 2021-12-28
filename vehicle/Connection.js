@@ -11,6 +11,7 @@ const Service = new ServiceWorker(
     {
         $halt() {
             return new Promise((resolve, reject) => {
+                log.info('[Connection]', 'Shutting down');
                 mDNS.unpublishAll(
                     () => server.close(
                         () => resolve()
@@ -19,66 +20,82 @@ const Service = new ServiceWorker(
             })
         },
         $init() {
-            log.info('Initialized');
+            // console.log(Error().stack)
+            // Open http server
+            try {
+                server.listen(config.mDNS.port);
+                log.info('[Server]', `Server listening at port ${config.mDNS.port}`);
+            } catch (e) {
+                log.error('[a]', e.stack);
+            }
+            // Publish boujour service
+            try {
+                mDNS.publish({
+                    name: config.mDNS.name,
+                    type: config.mDNS.type,
+                    port: config.mDNS.port
+                });
+                log.info('[Boujour]', `Service published as '${config.mDNS.name}'`);
+            } catch (e) {
+                log.error('[Bonjour]', e.stack);
+            }
         }
     }
 )
-// Create Server
-const server = http.createServer(({ url }, response) => {
-    log.info('IncomingRequest', url);
-    if (url === '/' || url === '') {
-        response.end(fs.readFileSync('./index.html'));
-        return;
-    } else {
-        response.writeHead(200).end();
-    }
-    const params = Object.fromEntries(
-        url
-            .replace(/^\//i, '')
-            .split('&')
-            .map(el => {
-                try {
-                    const {
-                        name,
-                        value
-                    } = /^(?<name>[a-zA-Z_]+)(?<value>.*)$/g
-                        .exec(el)
-                            .groups;
-                    return [name, value];
-                } catch (e) {
-                    log.error('IncomingRequest', e);
-                    return undefined;
-                }
-            })
-            .filter(el => el !== undefined)
-    );
-    // Send data to controller
-    if ('hlt' in params) {
-        // Halt all motion
-        Service['vehicle/Motor'].exec();
-    } else {
-        Service['vehicle/Motor'].drive(params);
-    }
-})
-try {
-    // server.listen(config.mDNS.port);
-} catch (e) {
-    log.error('Server', e.stack);
-}
 // Service publication
 const mDNS = bonjour();
-try {
-    mDNS.publish({
-        name: config.mDNS.name,
-        type: config.mDNS.type,
-        port: config.mDNS.port
-    });
-    mDNS.server
-    // Cancel broadcast at SIG_INT
-    process.on('SIGINT', () => {
-        log.info('Connection', 'Closing all connections');
-        mDNS.unpublishAll(() => process.exit(0));
-    })
-} catch (e) {
-    log.error('[Bonjour]', e);
-}
+// Create Server
+const server = http.createServer((request, response) => {
+    const { url, method } = request;
+    log.info('IncomingRequest', method, url);
+    if (method === 'GET') {
+        // Try to read as normal file
+        fs.readFile(`./webUI/${url}`, (err, data) => {
+            if (err) {
+                fs.readFile(`./webUI/${url}/index.html`, (err, data) => {
+                    if (err) {
+                        response.writeHead(404).end();
+                    } else {
+                        response.writeHead(200).end(data);
+                    }
+                })
+            } else {
+                response.writeHead(200).end(data);
+            }
+        })
+    } else if (method === 'POST') {
+        response.writeHead(200).end();
+        let body = [];
+        request
+            .on('data', chunk => body.push(chunk))
+            .on('end', () => {
+                const params = Object.fromEntries(
+                    body
+                        .join('')
+                        .split('&')
+                        .map(el => {
+                            try {
+                                const {
+                                    name,
+                                    value
+                                } = /^(?<name>[a-zA-Z_]+)(?<value>.*)$/g
+                                    .exec(el)
+                                        .groups;
+                                return [name, value];
+                            } catch (e) {
+                                log.error('IncomingRequest', e);
+                                return undefined;
+                            }
+                        })
+                        .filter(el => el !== undefined)
+                );
+                // Send data to controller
+                if ('hlt' in params) {
+                    // Halt all motion
+                    Service['vehicle/Motor'].exec();
+                } else {
+                    Service['vehicle/Motor'].drive(params);
+                }
+            });
+    }
+})

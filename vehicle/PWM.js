@@ -16,6 +16,7 @@ const Service = new ServiceWorker(
             }
         },
         async $halt() {
+            log.info('[PWM]', 'Shutting down');
             await PWM.destroy();
         },
         $init() {
