@@ -63,28 +63,29 @@ class PWM {
     }
     static async destroy(pinNumber = NaN) {
         if (pinNumber in this.pinList) {
-            this.pinList[pinNumber] = 0;
-            await GPIO.write(pinNumber, false)
             delete this.pinList[pinNumber];
+            await GPIO.write(pinNumber, false);
+            return;
         }
-        if (pinNumber === NaN)
+        if (pinNumber === NaN) {
             clearInterval(this.Timer);
-        await new Promise((resolve, reject) => {
-            const errStack = [];
-            for (const pin in this.pinList) {
-                this.destroy(pin)
-                    .catch(err => {
-                        errStack.push(err);
-                    })
-                    .then(() => {
-                        if (Object.keys(this.pinList).length === 0) {
-                            if (errStack.length)
-                                reject(errStack);
-                            else
-                                resolve();
-                        }
-                    })
-            }
-        })
+            await new Promise((resolve, reject) => {
+                const errStack = [];
+                for (const pin in this.pinList) {
+                    this.destroy(pin)
+                        .catch(err => {
+                            errStack.push(err);
+                        })
+                        .then(() => {
+                            if (Object.keys(this.pinList).length === 0) {
+                                if (errStack.length)
+                                    reject(errStack);
+                                else
+                                    resolve();
+                            }
+                        })
+                }
+            })
+        }
     }
 }
