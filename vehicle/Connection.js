@@ -47,7 +47,6 @@ const mDNS = bonjour();
 // Create Server
 const server = http.createServer((request, response) => {
     const { url, method } = request;
-    log.info('IncomingRequest', method, url);
     if (method === 'GET') {
         // Try to read as normal file
         fs.readFile(`./webUI/${url}`, (err, data) => {
