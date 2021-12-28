@@ -85,7 +85,7 @@ class PWM {
                             }
                         })
                 }
-            })
+            }).then(() => GPIO.destroy());
         }
     }
 }
