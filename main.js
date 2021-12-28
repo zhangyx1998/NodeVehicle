@@ -10,7 +10,6 @@ process.on('SIGINT', () => {
     process.stdout.write('\n');
     if (PendingExit) process.exit(0);
     PendingExit = true;
-    console.log(Service);
     halt()
         .then(() => process.exit(0))
         .catch(e => {
