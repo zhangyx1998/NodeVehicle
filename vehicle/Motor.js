@@ -19,8 +19,8 @@ export class Motor {
     }
     throttle(x) {
         return [
-            [this.#fw, this.#fw = x > 0 ? Math.abs(x) : 0],
-            [this.#bk, this.#bk = x < 0 ? Math.abs(x) : 0],
+            [this.#fw, x > 0 ? Math.abs(x) : 0],
+            [this.#bk, x < 0 ? Math.abs(x) : 0],
         ]
     }
     static motors = [];
@@ -30,17 +30,18 @@ export class Motor {
         for (const axes in CtrlModel)
             throttle[axes] = parseFloat(params[axes]) || 0;
         // Apply throttles to motion matrix
-        MotionMatrix = MotionMatrix.map((el, i) => {
+        MotionMatrix.forEach((el, i) => {
             let motion = +0.0;
             for (const axes in CtrlModel)
-                motion += throttle[axes] * CtrlModel[axes];
-            return motion;
+                motion += throttle[axes] * CtrlModel[axes][i];
+            MotionMatrix[i] = motion;
         })
         const linear_throttle = Math.max(1, ...MotionMatrix.map(x => Math.abs(x)));
         // Drive actual motors using PWM
         this.exec(MotionMatrix.map(x => x / linear_throttle));
     }
     static exec(MotionMatrix) {
+        console.log(MotionMatrix);
         if (MotionMatrix === undefined) {
             // Zero out all matrices
             MotionMatrix = new Array(this.motors.length).fill(0);
@@ -51,13 +52,14 @@ export class Motor {
                 } dimensions, while only ${this.motors.length
                 } motors are registered`
             );
-        else
+        else {
+            console.log(this.motors.map((motor, i) => motor.throttle(MotionMatrix[i])).flat(1))
             PWM.postMessage(
                 Object.fromEntries(
-                    this.motors.map((motor, i) => motor.throttle(MotionMatrix[i]))
+                    this.motors.map((motor, i) => motor.throttle(MotionMatrix[i])).flat(1)
                 )
             )
+        }
     }
-    static killPWM(sig) {PWM.kill(sig);}
 }
 Motor.motors = motors.map(pins => new Motor(pins));

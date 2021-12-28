@@ -2,11 +2,14 @@
 import bonjour from 'bonjour';
 import http from 'http';
 import config from '../config.js';
+import fs from 'fs';
 import { isMainThread, parentPort,  } from 'worker_threads';
 export const TxList = [];
 // Create Server
 const server = http.createServer((request, response) => {
-    console.log('Got request', request.url);
+    if (request.url === '/') {
+        return response.end(fs.readFileSync('./index.html'));
+    }
     const params = Object.fromEntries(
         request.url
             .replace(/^\//i, '')

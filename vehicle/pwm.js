@@ -12,8 +12,8 @@ class PWM {
     static counter = 0 | 0;
     static pinList = {};
     static fire() {
-        Object.entries(this.pinList).forEach((pin, width) => {
-            GPIO.write(pin, this.counter < width);
+        Object.entries(this.pinList).forEach(([pin, width]) => {
+            GPIO.write(parseInt(pin), this.counter < width);
         })
         this.counter = (this.counter + 1) & this.period;
     }
@@ -77,6 +77,7 @@ parentPort.on('message', ({ $setup, $destroy, ...args }) => {
     for (const pin in args) {
         PWM.set(pin, args[pin]);
     }
+    console.log(args)
 });
 // Auto destroy at SIG_INT
 process.on('SIGINT', async () => {
