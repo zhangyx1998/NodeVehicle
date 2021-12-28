@@ -64,9 +64,7 @@ class PWM {
     static async destroy(pinNumber = NaN) {
         if (pinNumber in this.pinList) {
             this.pinList[pinNumber] = 0;
-            await GPIO
-                .write(pinNumber, false)
-                .then(GPIO.destroy(pinNumber))
+            await GPIO.write(pinNumber, false)
             delete this.pinList[pinNumber];
         }
         if (pinNumber === NaN)

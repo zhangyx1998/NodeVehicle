@@ -41,7 +41,10 @@ export class ServiceProxy {
 			log.error(this, `Worker ${this.#workerName} throwed uncaught error:\n${err.stack}`);
 		})
 		this.#worker.on('exit', code => {
-			log.error(this, `Worker ${this.#workerName} exited with code ${code}`);
+			if (code)
+				log.error(this, `Worker ${this.#workerName} exited with code ${code}`);
+			else
+				log.info(this, `Worker ${this.#workerName} exited with code ${code}`);
 			this.#worker = undefined;
 		})
 		this.#worker.on('message', message => {

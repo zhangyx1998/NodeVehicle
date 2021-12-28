@@ -27,7 +27,6 @@ function halt() {
                 .catch(e => errors.push(e))
                 .then(() => {
                     pendingList = pendingList.filter(str => str !== serviceName);
-                    console.log(pendingList)
                     if (pendingList.length == 0) {
                         if (errors.length == 0)
                             resolve();
