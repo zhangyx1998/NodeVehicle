@@ -30,7 +30,7 @@ RPI_GPIO.setMode(GPIO.MODE_BCM);
 // Main PWM Object
 class PWM {
     static Timer = setInterval(() => this.fire(), 1);
-    static period = 0b11111 | 0;
+    static period = 0b1111 | 0;
     static counter = 0 | 0;
     static pinList = {};
     static fire() {
