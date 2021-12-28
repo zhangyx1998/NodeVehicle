@@ -1,17 +1,39 @@
 // The VEHICLE end
 import bonjour from 'bonjour';
 import http from 'http';
-import config from '../config.js';
+import config from '../util/config.js';
 import fs from 'fs';
-import { isMainThread, parentPort,  } from 'worker_threads';
+import { log } from '../util/diagnostics.js';
+import { ServiceWorker } from '../util/Service.js';
 export const TxList = [];
+// Register worker service
+const Service = new ServiceWorker(
+    {
+        $halt() {
+            return new Promise((resolve, reject) => {
+                mDNS.unpublishAll(
+                    () => server.close(
+                        () => resolve()
+                    )
+                );
+            })
+        },
+        $init() {
+            log.info('Initialized');
+        }
+    }
+)
 // Create Server
-const server = http.createServer((request, response) => {
-    if (request.url === '/') {
-        return response.end(fs.readFileSync('./index.html'));
+const server = http.createServer(({ url }, response) => {
+    log.info('IncomingRequest', url);
+    if (url === '/' || url === '') {
+        response.end(fs.readFileSync('./index.html'));
+        return;
+    } else {
+        response.writeHead(200).end();
     }
     const params = Object.fromEntries(
-        request.url
+        url
             .replace(/^\//i, '')
             .split('&')
             .map(el => {
@@ -21,29 +43,42 @@ const server = http.createServer((request, response) => {
                         value
                     } = /^(?<name>[a-zA-Z_]+)(?<value>.*)$/g
                         .exec(el)
-                        .groups;
+                            .groups;
                     return [name, value];
                 } catch (e) {
-                    console.log(e);
+                    log.error('IncomingRequest', e);
                     return undefined;
                 }
             })
             .filter(el => el !== undefined)
     );
     // Send data to controller
-    parentPort.postMessage(params);
-    response.writeHead(200).end();
+    if ('hlt' in params) {
+        // Halt all motion
+        Service['vehicle/Motor'].exec();
+    } else {
+        Service['vehicle/Motor'].drive(params);
+    }
 })
-server.listen(config.mDNS.port);
+try {
+    // server.listen(config.mDNS.port);
+} catch (e) {
+    log.error('Server', e.stack);
+}
 // Service publication
 const mDNS = bonjour();
-mDNS.publish({
-    name: config.mDNS.name,
-    type: config.mDNS.type,
-    port: config.mDNS.port
-});
-// Cancel broadcast at SIG_INT
-process.on('SIGINT', () => {
-    console.log();
-    mDNS.unpublishAll(() => process.exit(0));
-})
+try {
+    mDNS.publish({
+        name: config.mDNS.name,
+        type: config.mDNS.type,
+        port: config.mDNS.port
+    });
+    mDNS.server
+    // Cancel broadcast at SIG_INT
+    process.on('SIGINT', () => {
+        log.info('Connection', 'Closing all connections');
+        mDNS.unpublishAll(() => process.exit(0));
+    })
+} catch (e) {
+    log.error('[Bonjour]', e);
+}

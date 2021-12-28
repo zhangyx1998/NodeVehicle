@@ -1,7 +1,21 @@
-import { Worker } from 'worker_threads';
-export const PWM = new Worker('./vehicle/pwm.js');
-import config from '../config.js';
+import { ServiceWorker } from '../util/Service.js';
+import config from '../util/config.js';
+import { log } from '../util/diagnostics.js';
 const { CtrlModel, motors } = config;
+const Service = new ServiceWorker(
+    {
+        exec(...args) {
+            Motor.exec(...args);
+        },
+        drive(params) {
+            Motor.drive(params);
+        },
+        $init() {
+            Motor.motors = motors.map(pins => new Motor(pins));
+            log.info('Initialized');
+        }
+    }
+)
 export class Motor {
     #fw = NaN;
     #bk = NaN;
@@ -11,9 +25,7 @@ export class Motor {
         }
         if (!pinLegal(fw) || !pinLegal(bk))
             throw new TypeError(`Motor: Pin[${fw}|${bk}] is not valid`);
-        PWM.postMessage({
-            $setup: [fw, bk]
-        });
+        Service['vehicle/PWM'].setup([fw, bk]);
         this.#fw = fw | 0;
         this.#bk = bk | 0;
     }
@@ -41,7 +53,7 @@ export class Motor {
         this.exec(MotionMatrix.map(x => x / linear_throttle));
     }
     static exec(MotionMatrix) {
-        console.log(MotionMatrix);
+        log.info('exec', MotionMatrix);
         if (MotionMatrix === undefined) {
             // Zero out all matrices
             MotionMatrix = new Array(this.motors.length).fill(0);
@@ -53,8 +65,7 @@ export class Motor {
                 } motors are registered`
             );
         else {
-            console.log(this.motors.map((motor, i) => motor.throttle(MotionMatrix[i])).flat(1))
-            PWM.postMessage(
+            Service['vehicle/PWM'].update(
                 Object.fromEntries(
                     this.motors.map((motor, i) => motor.throttle(MotionMatrix[i])).flat(1)
                 )
@@ -62,4 +73,3 @@ export class Motor {
         }
     }
 }
-Motor.motors = motors.map(pins => new Motor(pins));

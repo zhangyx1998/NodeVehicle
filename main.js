@@ -9,7 +9,10 @@ Connection.on('message', (params) => {
         Motor.drive(params);
     }
 });
-// Exit sequence
-process.on('SIGINT', () => {
-    setTimeout(() => process.exit(0), 100)
-})
+
+import { Service } from './util/Service.js';
+Service.init(
+    'vehicle/Connection',
+    'vehicle/Motor',
+    'vehicle/PWM'
+);

@@ -1,7 +1,28 @@
-import { isMainThread, parentPort } from "worker_threads";
+import { ServiceWorker } from '../util/Service.js';
 import RPI_GPIO from "rpi-gpio";
+import { log } from "../util/diagnostics.js";
 // Check for run env
-if (isMainThread) throw new Error('pwm.js should be launched as a child process');
+const Service = new ServiceWorker(
+    {
+        setup(args) {
+            args.forEach(pin => PWM.setup(pin));
+        },
+        destory(args) {
+            args.forEach(pin => PWM.destory(pin));
+        },
+        update(args) {
+            for (const pin in args) {
+                PWM.set(pin, args[pin]);
+            }
+        },
+        async $halt() {
+            await PWM.destroy();
+        },
+        $init() {
+            log.info('Initialized');
+        }
+    }
+)
 // GPIO Async Utilsimport RPI_GPIO from "rpi-gpio";
 const GPIO = RPI_GPIO.promise;
 RPI_GPIO.setMode(GPIO.MODE_BCM);
@@ -25,8 +46,7 @@ class PWM {
                 this.pinList[pin] = iRatio;
             }
         } catch (err) {
-            console.log(`Error setting pin${pin} at ratio ${ratio}`);
-            console.log(err.stack);
+            log.error('set()', `Error setting pin${pin} at ratio ${ratio}\n${err.stack}`);
         }
     }
     static setup(pinNumber) {
@@ -37,8 +57,7 @@ class PWM {
                     this.pinList[pinNumber] = 0;
                 })
                 .catch(err => {
-                    console.log(`[PWM] Error setting up pin${pinNumber}`);
-                    console.log(err.stack);
+                    log.error('set()', `Error setting up pin${pinNumber}\n${err.stack}`);
                 })
     }
     static async destroy(pinNumber = NaN) {
@@ -51,36 +70,22 @@ class PWM {
         }
         if (pinNumber === NaN)
             clearInterval(this.Timer);
-            await new Promise((resolve, reject) => {
-                const errStack = [];
-                for (const pin in this.pinList) {
-                    this.destroy(pin)
-                        .catch(err => {
-                            errStack.push(err);
-                        })
-                        .then(() => {
-                            if (Object.keys(this.pinList).length === 0) {
-                                if (errStack.length)
-                                    reject(errStack);
-                                else
-                                    resolve();
-                            }
-                        })
-                }
-            })
+        await new Promise((resolve, reject) => {
+            const errStack = [];
+            for (const pin in this.pinList) {
+                this.destroy(pin)
+                    .catch(err => {
+                        errStack.push(err);
+                    })
+                    .then(() => {
+                        if (Object.keys(this.pinList).length === 0) {
+                            if (errStack.length)
+                                reject(errStack);
+                            else
+                                resolve();
+                        }
+                    })
+            }
+        })
     }
 }
-// Instruction listener
-parentPort.on('message', ({ $setup, $destroy, ...args }) => {
-    if ($setup) $setup.forEach(pin => PWM.setup(pin));
-    if ($destroy) $destroy.forEach(pin => PWM.destroy(pin));
-    for (const pin in args) {
-        PWM.set(pin, args[pin]);
-    }
-    console.log(args)
-});
-// Auto destroy at SIG_INT
-process.on('SIGINT', async () => {
-    await PWM.destroy();
-    process.exit(0);
-})

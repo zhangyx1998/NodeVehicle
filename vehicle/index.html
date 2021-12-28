@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Node Vehicle Simple Controller</title>
+    <style>
+        #stick {
+            --size: 300px;
+            --half-size: calc(var(--size) / 2);
+            width: var(--size);
+            height: var(--size);
+            border-radius: var(--half-size);
+            position: fixed;
+            top: calc(50vh - var(--half-size));
+            left: calc(50vw - var(--half-size));
+            background-color: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="stick"></div>
+    <button @click="fetch('http://rpi.local:8999/hlt')">HALT</button>
+    <script>
+        const stick = document.getElementById('stick');
+        stick.addEventListener('mousemove', listener);
+        stick.addEventListener('mouseup', listener);
+        stick.addEventListener('mousedown', listener);
+        let [x, y, r] = [0, 0, 0];
+        function listener(event) {
+            if (event.buttons) {
+                [x, r] = [
+                    (150 - event.offsetY) / 150,
+                    (150 - event.offsetX) / 150
+                ];
+                call()
+            } else {
+                if (x !== 0 || r !== 0) {
+                    x = r = 0;
+                    call();
+                }
+            }
+        }
+        window.addEventListener('keydown', event => {
+            switch (event.key) {
+                case 'ArrowLeft':
+                    r = 1;
+                    break;
+                case 'ArrowRight':
+                    r = -1;
+                    break;
+                case 'w':
+                    x = 1;
+                    break;
+                case 's':
+                    x = -1;
+                    break;
+                case 'a':
+                    y = 1;
+                    break;
+                case 'd':
+                    y = -1;
+                    break;
+                default:
+                    return;
+            }
+            call();
+        })
+        window.addEventListener('keyup', event => {
+            if (event.key == 'ArrowLeft' || event.key == 'ArrowRight')
+                r = 0;
+            else if (event.key == 'w' || event.key == 's')
+                x = 0;
+            else if (event.key == 'a' || event.key == 'd')
+                y = 0;
+            else return;
+            call();
+        })
+        function call() {
+            fetch(`http://rpi.local:8999/x${x}&y${y}&r${r}`);
+        }
+    </script>
+</body>
+
+</html>
