@@ -1,5 +1,6 @@
 import fs from "fs";
-export default Object.assign({
+import { fill } from './object.js';
+export default fill({
     mDNS: {
         name: "Node Vehicle",
         type: "node-vehicle",
